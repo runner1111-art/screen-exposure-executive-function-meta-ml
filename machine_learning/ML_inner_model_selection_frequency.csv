@@ -1,0 +1,5 @@
+﻿Model,Outer_folds_won
+Ridge,9
+Elastic net,8
+Random forest,7
+Gradient boosting,1

@@ -1,0 +1,22 @@
+{
+  "seed": 20260917,
+  "outer_folds": 5,
+  "outer_repeats": 5,
+  "inner_folds": 4,
+  "permutations_per_outer_fold": 5,
+  "primary_input": "C:\\Users\\du\\Desktop\\近期\\7. 自然人类行为\\投稿\\NHB\\Meta-analysis data.xlsx",
+  "proxy_input": "C:\\Users\\du\\Desktop\\近期\\7. 自然人类行为\\投稿\\NHB\\Machine-learning data.xlsx",
+  "age_input": "C:\\Users\\du\\Documents\\Codex\\2026-09-02\\new-chat-2\\outputs\\01a06257-eb0a-7d21-9558-201ec7052ca2\\Meta-analysis data_full_age_updated.xlsx",
+  "output_dir": "C:\\Users\\du\\Desktop\\近期\\7. 自然人类行为\\投稿\\NHB\\机器学习",
+  "best_model": "Ridge",
+  "best_parameters": {
+    "model__alpha": 100.0
+  },
+  "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.22621-SP0",
+  "pandas": "3.0.1",
+  "numpy": "2.5.3",
+  "scikit_learn": "1.9.1",
+  "matplotlib": "3.11.2",
+  "rendered_from_cached_results": true
+}

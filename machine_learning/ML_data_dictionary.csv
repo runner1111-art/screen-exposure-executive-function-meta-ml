@@ -1,0 +1,17 @@
+﻿Variable,Role,Definition_or_reason
+Target,Outcome,Fisher's z of the harmonized correlation; negative values indicate poorer EF with greater screen exposure.
+Group,Validation cluster,Independent cohort/sample cluster kept intact in every resampling split.
+Year,Predictor,Publication year; median-imputed within each training split.
+Log_N,Predictor,Natural logarithm of effect-level sample size.
+Age_Mean_years,Predictor,Mean baseline/exposure-wave age in years; training-fold median imputation plus missingness indicator.
+Region,Predictor,Broad geographic region derived from the reported country.
+Study_design,Predictor,"Cross-sectional, longitudinal observational or experimental design."
+Screen_Category,Predictor,Screen exposure category.
+Screen_Nature,Predictor,"Passive, interactive/entertainment, educational or mixed exposure."
+EF_Domain,Predictor,Executive-function domain.
+EF_Measure_Type,Predictor,Performance task versus rating/questionnaire.
+Quality_Class,Predictor,Study/effect quality class from the locked extraction file.
+Adjusted,Predictor,Whether the effect estimate was adjusted.
+Sampling_Variance_z,Excluded,Excluded to avoid outcome-derived leakage; sample size is represented by Log_N.
+Harmonized_r / Fisher_z,Excluded predictor,Outcome-defining quantities; never supplied to the model as predictors.
+First_Author / Report_ID / Effect_ID,Excluded predictor,Identifiers retained for traceability but not used for prediction.
