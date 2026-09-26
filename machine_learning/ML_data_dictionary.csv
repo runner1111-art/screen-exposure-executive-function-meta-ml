@@ -10,7 +10,7 @@ Screen_Category,Predictor,Screen exposure category.
 Screen_Nature,Predictor,"Passive, interactive/entertainment, educational or mixed exposure."
 EF_Domain,Predictor,Executive-function domain.
 EF_Measure_Type,Predictor,Performance task versus rating/questionnaire.
-Quality_Class,Predictor,Study/effect quality class from the locked extraction file.
+Quality_Class,Excluded predictor,"Excluded in the revision because the prior field was an effect-eligibility label, not a validated report-level risk-of-bias assessment."
 Adjusted,Predictor,Whether the effect estimate was adjusted.
 Sampling_Variance_z,Excluded,Excluded to avoid outcome-derived leakage; sample size is represented by Log_N.
 Harmonized_r / Fisher_z,Excluded predictor,Outcome-defining quantities; never supplied to the model as predictors.

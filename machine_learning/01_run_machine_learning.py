@@ -20,11 +20,12 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-LOCAL_LIB = os.environ.get(
-    "SCREEN_EF_ML_LIB",
-    r"C:\Users\du\Documents\Codex\2026-09-02\new-chat-2\work\ml_python_lib",
-)
-if Path(LOCAL_LIB).exists():
+SCRIPT_DIR = Path(__file__).resolve().parent
+REPO_ROOT = SCRIPT_DIR.parent
+DATA_DIR = REPO_ROOT / "data"
+
+LOCAL_LIB = os.environ.get("SCREEN_EF_ML_LIB", "")
+if LOCAL_LIB and Path(LOCAL_LIB).exists():
     sys.path.insert(0, LOCAL_LIB)
 
 import matplotlib as mpl
@@ -55,28 +56,36 @@ PERMUTATIONS = int(os.environ.get("SCREEN_EF_ML_PERMUTATIONS", "5"))
 META_XLSX = Path(
     os.environ.get(
         "SCREEN_EF_META_XLSX",
-        r"C:\Users\du\Desktop\近期\7. 自然人类行为\投稿\NHB\Meta-analysis data.xlsx",
+        str(DATA_DIR / "Meta-analysis_data_full_age_updated.xlsx"),
     )
 )
 ML_XLSX = Path(
     os.environ.get(
         "SCREEN_EF_PROXY_XLSX",
-        r"C:\Users\du\Desktop\近期\7. 自然人类行为\投稿\NHB\Machine-learning data.xlsx",
+        str(DATA_DIR / "Machine-learning_data.xlsx"),
     )
 )
 AGE_XLSX = Path(
     os.environ.get(
         "SCREEN_EF_AGE_XLSX",
-        r"C:\Users\du\Documents\Codex\2026-09-02\new-chat-2\outputs\01a06257-eb0a-7d21-9558-201ec7052ca2\Meta-analysis data_full_age_updated.xlsx",
+        str(DATA_DIR / "Meta-analysis_data_full_age_updated.xlsx"),
     )
 )
 OUTPUT_DIR = Path(
     os.environ.get(
         "SCREEN_EF_ML_OUTPUT",
-        r"C:\Users\du\Desktop\近期\7. 自然人类行为\投稿\NHB\机器学习",
+        str(SCRIPT_DIR),
     )
 )
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+PRIMARY_PREPARED_CSV = os.environ.get(
+    "SCREEN_EF_PRIMARY_PREPARED_CSV",
+    str(SCRIPT_DIR / "ML_primary_analysis_dataset.csv"),
+)
+PROXY_PREPARED_CSV = os.environ.get(
+    "SCREEN_EF_PROXY_PREPARED_CSV",
+    str(SCRIPT_DIR / "ML_proxy_sensitivity_dataset.csv"),
+)
 
 
 BLUE = "#1F5A89"
@@ -125,7 +134,6 @@ PRIMARY_SPEC = FeatureSpec(
         "Screen_Nature",
         "EF_Domain",
         "EF_Measure_Type",
-        "Quality_Class",
     ),
     binary=("Adjusted",),
 )
@@ -140,7 +148,6 @@ PROXY_SPEC = FeatureSpec(
         "Screen_Nature",
         "EF_Domain",
         "Outcome_Tier",
-        "Quality_Class",
         "Metric_Class",
     ),
     binary=("Longitudinal", "Experimental", "Adjusted", "Proxy_Flag"),
@@ -221,8 +228,8 @@ def read_inputs() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     for path in (META_XLSX, ML_XLSX, AGE_XLSX):
         if not path.exists():
             raise FileNotFoundError(f"Required input not found: {path}")
-    meta = pd.read_excel(META_XLSX)
-    proxy = pd.read_excel(ML_XLSX)
+    meta = pd.read_excel(AGE_XLSX, sheet_name="Meta_Data")
+    proxy = pd.read_excel(ML_XLSX, sheet_name="ML_Data", skiprows=3)
     age = pd.read_excel(AGE_XLSX, sheet_name="Meta_Data")
     return meta, proxy, age
 
@@ -232,7 +239,10 @@ def prepare_primary(
 ) -> pd.DataFrame:
     age_cols = ["Effect_ID", "Age_Mean_years", "Age_SD_years", "Age_Verification_Status"]
     quality_cols = ["Effect_ID", "Quality_Class", "Metric_Class", "Proxy_Flag"]
-    out = meta.merge(age[age_cols].drop_duplicates("Effect_ID"), on="Effect_ID", how="left")
+    if set(age_cols).issubset(meta.columns):
+        out = meta.copy()
+    else:
+        out = meta.merge(age[age_cols].drop_duplicates("Effect_ID"), on="Effect_ID", how="left")
     out = out.merge(
         proxy[quality_cols].drop_duplicates("Effect_ID"), on="Effect_ID", how="left"
     )
@@ -1176,7 +1186,7 @@ def write_data_dictionary() -> None:
         ("Screen_Nature", "Predictor", "Passive, interactive/entertainment, educational or mixed exposure."),
         ("EF_Domain", "Predictor", "Executive-function domain."),
         ("EF_Measure_Type", "Predictor", "Performance task versus rating/questionnaire."),
-        ("Quality_Class", "Predictor", "Study/effect quality class from the locked extraction file."),
+        ("Quality_Class", "Excluded predictor", "Excluded in the revision because the prior field was an effect-eligibility label, not a validated report-level risk-of-bias assessment."),
         ("Adjusted", "Predictor", "Whether the effect estimate was adjusted."),
         ("Sampling_Variance_z", "Excluded", "Excluded to avoid outcome-derived leakage; sample size is represented by Log_N."),
         ("Harmonized_r / Fisher_z", "Excluded predictor", "Outcome-defining quantities; never supplied to the model as predictors."),
@@ -1241,9 +1251,13 @@ The ML analysis estimates whether study, exposure and outcome characteristics ge
 
 def main() -> None:
     np.random.seed(SEED)
-    meta, proxy_raw, age = read_inputs()
-    primary = prepare_primary(meta, proxy_raw, age)
-    proxy = prepare_proxy(proxy_raw)
+    if PRIMARY_PREPARED_CSV and PROXY_PREPARED_CSV:
+        primary = pd.read_csv(PRIMARY_PREPARED_CSV)
+        proxy = pd.read_csv(PROXY_PREPARED_CSV)
+    else:
+        meta, proxy_raw, age = read_inputs()
+        primary = prepare_primary(meta, proxy_raw, age)
+        proxy = prepare_proxy(proxy_raw)
 
     manifest = pd.DataFrame(
         [

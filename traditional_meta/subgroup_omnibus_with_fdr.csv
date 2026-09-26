@@ -1,0 +1,22 @@
+EF_dimension,moderator,moderator_label,interaction_p,p_fdr_bh_21_subgroup_tests,significant_fdr_0_05
+Inhibitory control,Age_stage,Developmental stage,0.384503396507921,0.44858729592590785,FALSE
+Inhibitory control,Region,Geographic region,0.192937684595944,0.2701127584343216,FALSE
+Inhibitory control,Screen_type,Screen exposure type,0.0908772212390341,0.15092621975746964,FALSE
+Inhibitory control,Screen_feature,Screen exposure feature,0.218030803189213,0.2861654291858421,FALSE
+Inhibitory control,Design_group,Study design,0.603390921676808,0.6335604677606483,FALSE
+Inhibitory control,Adjustment_group,Adjustment status,0.0085511894547142,0.0256535683641426,TRUE
+Inhibitory control,Measurement_mode,Executive-function measurement,2.756067033e-8,5.7877407693e-7,TRUE
+Working memory,Age_stage,Developmental stage,0.0697755820000223,0.13320792927276986,FALSE
+Working memory,Region,Geographic region,0.796413850791746,0.796413850791746,FALSE
+Working memory,Screen_type,Screen exposure type,0.00546211166725757,0.019117390835401496,TRUE
+Working memory,Screen_feature,Screen exposure feature,0.00260510155546139,0.010941426532937839,TRUE
+Working memory,Design_group,Study design,0.489196334167488,0.5406906851324867,FALSE
+Working memory,Adjustment_group,Adjustment status,0.00237937293186202,0.010941426532937839,TRUE
+Working memory,Measurement_mode,Executive-function measurement,4.6356960464444e-4,0.00486748084876662,TRUE
+Cognitive flexibility,Age_stage,Developmental stage,0.244520955346704,0.3020552977812226,FALSE
+Cognitive flexibility,Region,Geographic region,0.0489388427713461,0.10277156981982681,FALSE
+Cognitive flexibility,Screen_type,Screen exposure type,0.0934305169927193,0.15092621975746964,FALSE
+Cognitive flexibility,Screen_feature,Screen exposure feature,0.038944969611541,0.09389543722427517,FALSE
+Cognitive flexibility,Design_group,Study design,0.0402409016675465,0.09389543722427517,FALSE
+Cognitive flexibility,Adjustment_group,Adjustment status,0.116476925005504,0.174715387508256,FALSE
+Cognitive flexibility,Measurement_mode,Executive-function measurement,0.00116896324512604,0.00818274271588228,TRUE

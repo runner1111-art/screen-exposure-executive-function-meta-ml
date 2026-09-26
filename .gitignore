@@ -1,18 +1,9 @@
-# Python
 __pycache__/
-*.pyc
-*.pyo
-
-# R
+*.py[cod]
 .Rhistory
 .RData
-.Ruserdata
 *.rds
-.Rproj.user/
-
-# Data / binary artifacts (reproducible from code)
-*.xlsx
-
-# OS
 .DS_Store
 Thumbs.db
+revision_*/
+reproduced_outputs/

@@ -14,7 +14,11 @@ All effects from the same cohort/sample cluster are assigned to the same fold. H
 
 Ridge, elastic-net, random-forest and histogram-gradient-boosting regressors are compared with a training-fold mean comparator. Performance is summarized by RMSE, MAE, predictive Q², correlation R², calibration intercept/slope and mean bias. Group-block permutation importance and partial dependence are exploratory descriptions of predictive dependence, not causal effects.
 
+The final predictor set excludes `Quality_Class`. The source field was an effect-eligibility label rather than a validated report-level risk-of-bias assessment, so retaining it would have introduced a non-comparable methodological label into prediction.
+
 ## Run
+
+The committed prepared primary and proxy-sensitivity CSV files are used by default, so the workflow is portable and does not depend on the original local directory structure.
 
 ```powershell
 python -m pip install -r requirements.txt
@@ -34,7 +38,7 @@ primary data, predictions and tuning audit:
 python 03_additional_machine_learning_figures.py
 ```
 
-Input and output paths can be overridden with `SCREEN_EF_META_XLSX`, `SCREEN_EF_PROXY_XLSX`, `SCREEN_EF_AGE_XLSX` and `SCREEN_EF_ML_OUTPUT`. The random seed and resampling settings are recorded in `ML_run_config_and_session.json`.
+Input and output paths can be overridden with `SCREEN_EF_PRIMARY_PREPARED_CSV`, `SCREEN_EF_PROXY_PREPARED_CSV`, `SCREEN_EF_META_XLSX`, `SCREEN_EF_PROXY_XLSX`, `SCREEN_EF_AGE_XLSX` and `SCREEN_EF_ML_OUTPUT`. The random seed and resampling settings are recorded in `ML_run_config_and_session.json`.
 
 ## Figure set
 

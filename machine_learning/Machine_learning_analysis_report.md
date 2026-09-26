@@ -10,13 +10,13 @@ All rows from the same cohort/sample cluster were kept in the same fold. Four re
 
 ## Primary result
 
-The lowest-RMSE non-null algorithm was Ridge. Its mean group-balanced RMSE was 0.190 (repeat range approximated by the 2.5th–97.5th percentiles, 0.183 to 0.203), compared with 0.188 for the null comparator. Mean MAE was 0.136, mean predictive Q² was -0.075, and the mean calibration slope was 0.37. No candidate model improved on the training-mean comparator under cohort-grouped validation; the ML findings should therefore be treated as exploratory heterogeneity mapping rather than a validated prediction tool.
+The lowest-RMSE non-null algorithm was Ridge. Its mean group-balanced RMSE was 0.191 (repeat range approximated by the 2.5th–97.5th percentiles, 0.182 to 0.204), compared with 0.188 for the null comparator. Mean MAE was 0.135, mean predictive Q² was -0.084, and the mean calibration slope was 0.35. No candidate model improved on the training-mean comparator under cohort-grouped validation; the ML findings should therefore be treated as exploratory heterogeneity mapping rather than a validated prediction tool.
 
 The final full-data refit used: `{"model__alpha": 100.0}`. This refit is provided for interpretation and future external validation; its apparent fit is not used as evidence of performance.
 
 ## Exploratory predictor dependence
 
-Cross-validated group-block permutation ranked the leading predictors as Adjusted (ΔRMSE=0.006), Log_N (ΔRMSE=0.005), EF_Measure_Type (ΔRMSE=0.005), Study_design (ΔRMSE=0.002), Quality_Class (ΔRMSE=0.001). These values quantify loss of held-out predictive accuracy after disrupting a predictor while preserving clustered validation. They are not causal effects and should not be interpreted as intervention targets. Partial-dependence plots are likewise descriptive full-data refits.
+Cross-validated group-block permutation ranked the leading predictors as Adjusted (ΔRMSE=0.009), EF_Measure_Type (ΔRMSE=0.005), Log_N (ΔRMSE=0.004), Study_design (ΔRMSE=0.002), Year (ΔRMSE=0.001). These values quantify loss of held-out predictive accuracy after disrupting a predictor while preserving clustered validation. They are not causal effects and should not be interpreted as intervention targets. Partial-dependence plots are likewise descriptive full-data refits.
 
 ## Recommended manuscript interpretation
 

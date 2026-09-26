@@ -23,9 +23,15 @@ spec.loader.exec_module(ml)
 
 def main() -> None:
     out = ml.OUTPUT_DIR
-    meta, proxy_raw, age = ml.read_inputs()
-    primary = ml.prepare_primary(meta, proxy_raw, age)
-    proxy = ml.prepare_proxy(proxy_raw)
+    primary_csv = Path(ml.PRIMARY_PREPARED_CSV)
+    proxy_csv = Path(ml.PROXY_PREPARED_CSV)
+    if primary_csv.exists() and proxy_csv.exists():
+        primary = ml.pd.read_csv(primary_csv)
+        proxy = ml.pd.read_csv(proxy_csv)
+    else:
+        meta, proxy_raw, age = ml.read_inputs()
+        primary = ml.prepare_primary(meta, proxy_raw, age)
+        proxy = ml.prepare_proxy(proxy_raw)
 
     primary_metrics = ml.pd.read_csv(out / "ML_primary_performance_by_repeat.csv")
     proxy_metrics = ml.pd.read_csv(out / "ML_proxy_sensitivity_performance_by_repeat.csv")
@@ -60,8 +66,8 @@ def main() -> None:
         "outer_repeats": ml.OUTER_REPEATS,
         "inner_folds": ml.INNER_FOLDS,
         "permutations_per_outer_fold": ml.PERMUTATIONS,
-        "primary_input": str(ml.META_XLSX),
-        "proxy_input": str(ml.ML_XLSX),
+        "primary_input": str(primary_csv if primary_csv.exists() else ml.META_XLSX),
+        "proxy_input": str(proxy_csv if proxy_csv.exists() else ml.ML_XLSX),
         "age_input": str(ml.AGE_XLSX),
         "output_dir": str(out),
         "best_model": best_model,

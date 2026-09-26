@@ -32,17 +32,26 @@ suppressPackageStartupMessages({
   library(forcats)
 })
 
-input_file <- paste0(
-  "C:/Users/du/Documents/Codex/2026-09-02/new-chat-2/outputs/",
-  "01a06257-eb0a-7d21-9558-201ec7052ca2/Meta-analysis data_full_age_updated.xlsx"
+script_file <- sub(
+  "^--file=", "",
+  grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
 )
-included_reports_file <- paste0(
-  "C:/Users/du/Documents/Codex/2026-09-02/new-chat-2/outputs/",
-  "01a06257-eb0a-7d21-9558-201ec7052ca2/Screen_EF_fulltext_review_meta_dataset_v4_final_adjudicated.xlsx"
+script_dir <- if (length(script_file) > 0L) {
+  dirname(normalizePath(script_file[[1]], winslash = "/", mustWork = TRUE))
+} else {
+  normalizePath(getwd(), winslash = "/", mustWork = TRUE)
+}
+repo_root <- normalizePath(file.path(script_dir, ".."), winslash = "/", mustWork = TRUE)
+
+input_file <- Sys.getenv(
+  "SCREEN_EF_META_XLSX",
+  file.path(repo_root, "data", "Meta-analysis_data_full_age_updated.xlsx")
 )
-# R is run under an English Windows locale. This ASCII junction points to:
-# C:/Users/du/Desktop/近期/7. 自然人类行为/投稿/NHB/图片/Final_14_figures
-output_dir <- "C:/Users/du/Documents/Codex/2026-09-02/new-chat-2/work/nhb_figures_final14"
+included_reports_file <- Sys.getenv(
+  "SCREEN_EF_INCLUDED_REPORTS_XLSX",
+  file.path(repo_root, "data", "Table_1_final_verified.xlsx")
+)
+output_dir <- Sys.getenv("SCREEN_EF_META_OUTPUT", script_dir)
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
 if (!file.exists(input_file)) stop("Input workbook not found: ", input_file)
@@ -1251,15 +1260,26 @@ ggsave(
 
 # World map: all reports retained after final full-text adjudication, including
 # reports without an extractable effect for the quantitative synthesis.
-included_reports <- read_excel(included_reports_file, sheet = "Table1", skip = 4) %>%
+included_sheets <- excel_sheets(included_reports_file)
+if ("Table 1" %in% included_sheets) {
+  included_reports <- read_excel(included_reports_file, sheet = "Table 1", skip = 2)
+} else if ("Table1" %in% included_sheets) {
+  included_reports <- read_excel(included_reports_file, sheet = "Table1", skip = 4)
+} else {
+  stop("No Table 1/Table1 sheet found in included-report workbook.")
+}
+country_candidates <- intersect(c("Country", "Country / cohort"), names(included_reports))
+if (length(country_candidates) == 0L) {
+  stop("No Country or Country / cohort column found in included-report workbook.")
+}
+country_col <- country_candidates[[1]]
+included_reports <- included_reports %>%
+  filter(!is.na(.data[[country_col]]), str_squish(.data[[country_col]]) != "") %>%
   mutate(Included_Report_ID = row_number())
 
-if (nrow(included_reports) != 99L) {
-  warning("Final Table1 contains ", nrow(included_reports), " reports rather than the expected 99.")
-}
-
-country_counts <- included_reports %>%
-  transmute(Included_Report_ID, Country_raw = `Country / cohort`) %>%
+country_long <- included_reports %>%
+  transmute(Included_Report_ID, Country_raw = .data[[country_col]]) %>%
+  filter(!is.na(Country_raw), str_squish(Country_raw) != "", Country_raw != "NR") %>%
   separate_rows(Country_raw, sep = ";") %>%
   mutate(
     Country = str_trim(str_remove(Country_raw, "\\s*/.*$")),
@@ -1269,10 +1289,13 @@ country_counts <- included_reports %>%
       TRUE ~ Country
     )
   ) %>%
-  distinct(Included_Report_ID, Country, map_region) %>%
+  distinct(Included_Report_ID, Country, map_region)
+
+country_counts <- country_long %>%
   count(Country, map_region, name = "reports", sort = TRUE)
 
 n_included_reports <- n_distinct(included_reports$Included_Report_ID)
+n_geocoded_reports <- n_distinct(country_long$Included_Report_ID)
 n_country_attributions <- sum(country_counts$reports)
 n_countries <- n_distinct(country_counts$Country)
 
@@ -1331,8 +1354,8 @@ world_map_figure <- map_panel +
   plot_annotation(
     title = "Geographic distribution of all included reports",
     subtitle = sprintf(
-      "%d reports across %d countries; one China-United Kingdom report contributes to both countries (%d country attributions)",
-      n_included_reports, n_countries, n_country_attributions
+      "%d included reports; %d geocoded across %d countries (%d country attributions; one multi-country report)",
+      n_included_reports, n_geocoded_reports, n_countries, n_country_attributions
     ),
     caption = paste0(
       "Counts are based on the final adjudicated Table 1, including reports without an extractable core-effect estimate. ",
@@ -1399,12 +1422,6 @@ write.csv(
   country_counts %>% select(Country, reports),
   file.path(output_dir, "included_report_country_counts.csv"),
   row.names = FALSE, fileEncoding = "UTF-8"
-)
-
-saveRDS(main_models, file.path(output_dir, "main_three_level_models.rds"))
-save(
-  meta_data, main_models, regression_models,
-  file = file.path(output_dir, "three_level_meta_workspace.RData")
 )
 
 svg_files <- list.files(output_dir, pattern = "\\.svg$", full.names = FALSE)
