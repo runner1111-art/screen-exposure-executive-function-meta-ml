@@ -33,9 +33,14 @@ meta <- read_excel(input_xlsx, sheet = "Meta_Data") %>%
       TRUE ~ NA_character_
     ),
     Fisher_z = as.numeric(Fisher_z),
-    Sampling_Variance_z = as.numeric(Sampling_Variance_z)
+    Sampling_Variance_z = as.numeric(Sampling_Variance_z),
+    Expanded_Primary_Model = as.numeric(Expanded_Primary_Model)
   ) %>%
-  filter(!is.na(EF_dimension), is.finite(Fisher_z), is.finite(Sampling_Variance_z), Sampling_Variance_z > 0)
+  filter(
+    Expanded_Primary_Model == 1,
+    !is.na(EF_dimension), is.finite(Fisher_z),
+    is.finite(Sampling_Variance_z), Sampling_Variance_z > 0
+  )
 
 # Trim-and-fill is not defined for multilevel dependent estimates. For this
 # sensitivity analysis only, collapse each report/domain to one conservative

@@ -6,7 +6,7 @@ options(stringsAsFactors = FALSE, scipen = 999, encoding = "UTF-8")
 
 required_packages <- c(
   "readxl", "metafor", "dplyr", "tidyr", "ggplot2", "patchwork",
-  "svglite", "purrr", "stringr", "forcats", "MASS", "maps"
+  "purrr", "stringr", "forcats", "MASS", "maps"
 )
 
 missing_packages <- required_packages[
@@ -26,7 +26,6 @@ suppressPackageStartupMessages({
   library(tidyr)
   library(ggplot2)
   library(patchwork)
-  library(svglite)
   library(purrr)
   library(stringr)
   library(forcats)
@@ -111,7 +110,8 @@ required_columns <- c(
   "Study_design", "Longitudinal", "N", "Age_Group", "Screen_Category",
   "Screen_Nature", "Detailed_EF_Domain", "EF_Domain", "EF_Instrument",
   "Adjusted", "Harmonized_r", "Fisher_z", "Sampling_Variance_z",
-  "Analysis_Tier", "Primary_Model", "Age_Mean_years", "Age_SD_years"
+  "Analysis_Tier", "Primary_Model", "Expanded_Primary_Model",
+  "Age_Mean_years", "Age_SD_years"
 )
 missing_columns <- setdiff(required_columns, names(meta_raw))
 if (length(missing_columns) > 0L) {
@@ -179,6 +179,7 @@ meta_data <- meta_raw %>%
     Fisher_z = suppressWarnings(as.numeric(Fisher_z)),
     Sampling_Variance_z = suppressWarnings(as.numeric(Sampling_Variance_z)),
     Primary_Model = suppressWarnings(as.numeric(Primary_Model)),
+    Expanded_Primary_Model = suppressWarnings(as.numeric(Expanded_Primary_Model)),
     Age_Mean_years = suppressWarnings(as.numeric(Age_Mean_years)),
     Age_SD_years = suppressWarnings(as.numeric(Age_SD_years)),
     EF_dimension = case_when(
@@ -199,7 +200,13 @@ meta_data <- meta_raw %>%
       Year <= 2022 ~ "2020-2022",
       TRUE ~ "2023-2026"
     ),
-    Author_year = paste0(First_Author, ", ", Year),
+    Author_year = paste0(
+      if_else(
+        str_detect(str_to_lower(First_Author), "martin-perpi"),
+        "Martin-Perpiña", First_Author
+      ),
+      ", ", Year
+    ),
     Effect_label = paste0(Author_year, " (", Effect_ID, ")"),
     sei = sqrt(Sampling_Variance_z),
     r_ci_lb = bt_r(Fisher_z - qnorm(0.975) * sei),
@@ -213,6 +220,13 @@ meta_data <- meta_raw %>%
 
 domain_order <- c("Inhibitory control", "Working memory", "Cognitive flexibility")
 meta_data$EF_dimension <- factor(meta_data$EF_dimension, levels = domain_order)
+
+# Expanded primary models retain direct correlations and documented conversions
+# to a correlation/Fisher-z scale when direction and sampling variance are
+# available. The original strict Primary_Model subset is retained as the key
+# effect-scale sensitivity analysis.
+primary_meta_data <- meta_data %>% filter(Expanded_Primary_Model == 1)
+strict_meta_data <- meta_data %>% filter(Primary_Model == 1)
 
 make_random_terms <- function(dat) {
   out <- list()
@@ -476,7 +490,7 @@ forest_table_plot <- function(rows, figure_title, figure_subtitle, figure_captio
   if (is.null(height)) height <- max(5.0, 1.9 + 0.215 * nrow(rows))
   if (!is.null(output_file)) {
     ggsave(
-      filename = output_file, plot = assembled, device = svglite,
+      filename = output_file, plot = assembled, device = grDevices::svg,
       width = 12, height = height, units = "in", bg = "white"
     )
   }
@@ -489,7 +503,7 @@ main_plot_objects <- list()
 main_panel_letters <- setNames(c("A", "B", "C"), domain_order)
 
 for (domain in domain_order) {
-  dat <- meta_data %>% filter(EF_dimension == domain) %>% arrange(Year, First_Author, Effect_ID)
+  dat <- primary_meta_data %>% filter(EF_dimension == domain) %>% arrange(Year, First_Author, Effect_ID)
   fit <- fit_meta(dat)
   main_models[[domain]] <- fit
   pooled <- extract_intercept(fit)
@@ -573,9 +587,16 @@ for (domain in domain_order) {
   ggsave(
     file.path(output_dir, main_file_names[[domain]]),
     main_plot_objects[[domain]]$plot,
-    device = svglite, width = 10.8,
+    device = grDevices::svg, width = 10.8,
     height = main_plot_objects[[domain]]$height,
     units = "in", bg = "white", limitsize = FALSE
+  )
+  ggsave(
+    file.path(output_dir, sub("\\.svg$", ".png", main_file_names[[domain]])),
+    main_plot_objects[[domain]]$plot,
+    device = "png", width = 10.8,
+    height = main_plot_objects[[domain]]$height,
+    units = "in", dpi = 300, bg = "white", limitsize = FALSE
   )
 }
 unlink(file.path(output_dir, "01_Main_analysis_three_domains.svg"))
@@ -625,7 +646,7 @@ subgroup_result_rows <- list()
 subgroup_index <- 0L
 
 for (domain in domain_order) {
-  domain_data <- meta_data %>% filter(EF_dimension == domain)
+  domain_data <- primary_meta_data %>% filter(EF_dimension == domain)
   for (variable in names(subgroup_variables)) {
     subgroup_index <- subgroup_index + 1L
     display_name <- subgroup_variables[[variable]]
@@ -848,7 +869,7 @@ for (variable in names(subgroup_plot_store)) {
     )
   ggsave(
     file.path(output_dir, subgroup_file_names[[variable]]),
-    figure, device = svglite, width = 12,
+    figure, device = grDevices::svg, width = 12,
     height = sum(vapply(objects, `[[`, numeric(1), "height")) + 1.05,
     units = "in", bg = "white", limitsize = FALSE
   )
@@ -922,7 +943,7 @@ regression_plot_store <- list()
 
 for (i in seq_along(domain_order)) {
   domain <- domain_order[[i]]
-  dat <- meta_data %>% filter(EF_dimension == domain)
+  dat <- primary_meta_data %>% filter(EF_dimension == domain)
   age_fit <- fit_regression(dat, "Age_Mean_years", "Baseline mean age (years)", domain)
   year_fit <- fit_regression(dat, "Year", "Publication year", domain)
   n_fit <- fit_regression(dat, "log_N", "Log sample size", domain)
@@ -966,8 +987,13 @@ regression_figure <- wrap_plots(regression_plots, ncol = 3) +
   )
 ggsave(
   file.path(output_dir, "09_Meta_regression_age_year_sample_size.svg"),
-  regression_figure, device = svglite, width = 15, height = 12.2,
+  regression_figure, device = grDevices::svg, width = 15, height = 12.2,
   units = "in", bg = "white"
+)
+ggsave(
+  file.path(output_dir, "09_Meta_regression_age_year_sample_size.png"),
+  regression_figure, device = "png", width = 15, height = 12.2,
+  units = "in", dpi = 300, bg = "white"
 )
 
 leave_one_cluster <- function(dat, cluster_var, domain, full_fit) {
@@ -1063,7 +1089,7 @@ plot_leave_one_out <- function(results, title, subtitle, output_file = NULL) {
   plot_height <- max(5.2, 2.55 + 0.25 * nrow(dat))
   if (!is.null(output_file)) {
     ggsave(
-      output_file, assembled, device = svglite, width = 12,
+      output_file, assembled, device = grDevices::svg, width = 12,
       height = plot_height, units = "in", bg = "white"
     )
   }
@@ -1076,7 +1102,7 @@ report_loo_plots <- list()
 
 for (i in seq_along(domain_order)) {
   domain <- domain_order[[i]]
-  dat <- meta_data %>% filter(EF_dimension == domain)
+  dat <- primary_meta_data %>% filter(EF_dimension == domain)
   full_fit <- main_models[[domain]]
 
   report_loo <- leave_one_cluster(dat, "Report_ID", domain, full_fit)
@@ -1112,18 +1138,24 @@ report_loo_figure <- wrap_plots(lapply(report_loo_plots[domain_order], `[[`, "pl
   )
 ggsave(
   file.path(output_dir, "10_Sensitivity_leave_one_report.svg"),
-  report_loo_figure, device = svglite, width = 12,
+  report_loo_figure, device = grDevices::svg, width = 12,
   height = sum(vapply(report_loo_plots[domain_order], `[[`, numeric(1), "height")) + 1.0,
   units = "in", bg = "white", limitsize = FALSE
+)
+ggsave(
+  file.path(output_dir, "10_Sensitivity_leave_one_report.png"),
+  report_loo_figure, device = "png", width = 12,
+  height = sum(vapply(report_loo_plots[domain_order], `[[`, numeric(1), "height")) + 1.0,
+  units = "in", dpi = 300, bg = "white", limitsize = FALSE
 )
 unlink(file.path(output_dir, "11_Sensitivity_leave_one_cohort.svg"))
 
 model_set_results <- map_dfr(domain_order, function(domain) {
-  all_dat <- meta_data %>% filter(EF_dimension == domain)
-  primary_dat <- all_dat %>% filter(Primary_Model == 1)
+  expanded_dat <- primary_meta_data %>% filter(EF_dimension == domain)
+  strict_dat <- strict_meta_data %>% filter(EF_dimension == domain)
   fits <- list(
-    "All eligible effects" = fit_meta(all_dat),
-    "Prespecified primary subset" = fit_meta(primary_dat)
+    "Expanded convertible-effect primary" = fit_meta(expanded_dat),
+    "Strict direct/validated subset" = fit_meta(strict_dat)
   )
   imap_dfr(fits, function(fit, set_name) {
     pooled <- extract_intercept(fit)
@@ -1137,7 +1169,7 @@ model_set_results <- map_dfr(domain_order, function(domain) {
 
 model_set_plot <- model_set_results %>%
   mutate(
-    analysis_set = factor(analysis_set, levels = c("All eligible effects", "Prespecified primary subset")),
+    analysis_set = factor(analysis_set, levels = c("Expanded convertible-effect primary", "Strict direct/validated subset")),
     EF_dimension = factor(EF_dimension, levels = rev(domain_order))
   ) %>%
   ggplot(aes(x = pooled_r, y = EF_dimension, colour = analysis_set, shape = analysis_set)) +
@@ -1150,8 +1182,8 @@ model_set_plot <- model_set_results %>%
   scale_colour_manual(values = c("#19558C", "#C7362F")) +
   labs(
     x = "Pooled correlation coefficient (r)", y = NULL,
-    title = "Sensitivity to the prespecified analysis set",
-    subtitle = "All eligible effects are compared with the prespecified primary subset",
+    title = "Sensitivity to effect-scale inclusion rules",
+    subtitle = "Expanded convertible-effect primary estimates are compared with the strict subset",
     colour = NULL, shape = NULL
   ) +
   theme_nhb(10) +
@@ -1159,7 +1191,7 @@ model_set_plot <- model_set_results %>%
 
 ggsave(
   file.path(output_dir, "12_Sensitivity_analysis_set_comparison.svg"),
-  model_set_plot, device = svglite, width = 8.5, height = 4.6, units = "in", bg = "white"
+  model_set_plot, device = grDevices::svg, width = 8.5, height = 4.6, units = "in", bg = "white"
 )
 
 publication_bias_rows <- list()
@@ -1172,7 +1204,7 @@ funnel_triangle <- function(center, zcrit, max_se) {
 
 for (i in seq_along(domain_order)) {
   domain <- domain_order[[i]]
-  dat <- meta_data %>% filter(EF_dimension == domain)
+  dat <- primary_meta_data %>% filter(EF_dimension == domain)
   full_fit <- main_models[[domain]]
   pooled <- extract_intercept(full_fit)
   center <- pooled$estimate_z
@@ -1235,7 +1267,7 @@ for (i in seq_along(domain_order)) {
         ifelse(egger_p < 0.001, "< 0.001", paste0("= ", fmt_p(egger_p)))
       ),
       caption = str_wrap(paste0(
-        "All eligible effects are shown. The Egger test retains the three-level structure and uses report-clustered inference. ",
+        "Prespecified primary effects are shown. The Egger test retains the three-level structure and uses report-clustered inference. ",
         "Funnel plots are exploratory because effect sizes within reports are dependent and residual heterogeneity is present."
       ), width = 185),
       theme = theme(
@@ -1254,8 +1286,13 @@ publication_bias_results <- bind_rows(publication_bias_rows)
 publication_bias_figure <- wrap_plots(publication_bias_plots[domain_order], ncol = 1)
 ggsave(
   file.path(output_dir, "13_Publication_bias_three_domains.svg"),
-  publication_bias_figure, device = svglite, width = 12, height = 15.8,
+  publication_bias_figure, device = grDevices::svg, width = 12, height = 15.8,
   units = "in", bg = "white"
+)
+ggsave(
+  file.path(output_dir, "13_Publication_bias_three_domains.png"),
+  publication_bias_figure, device = "png", width = 12, height = 15.8,
+  units = "in", dpi = 300, bg = "white"
 )
 
 # World map: all reports retained after final full-text adjudication, including
@@ -1298,6 +1335,7 @@ n_included_reports <- n_distinct(included_reports$Included_Report_ID)
 n_geocoded_reports <- n_distinct(country_long$Included_Report_ID)
 n_country_attributions <- sum(country_counts$reports)
 n_countries <- n_distinct(country_counts$Country)
+n_core_reports <- n_distinct(primary_meta_data$Report_ID)
 
 world_data <- map_data("world") %>%
   left_join(country_counts, by = c("region" = "map_region")) %>%
@@ -1359,7 +1397,8 @@ world_map_figure <- map_panel +
     ),
     caption = paste0(
       "Counts are based on the final adjudicated Table 1, including reports without an extractable core-effect estimate. ",
-      "They therefore exceed the 24 reports contributing to at least one of the three quantitative core-domain models."
+      "They therefore exceed the ", n_core_reports,
+      " reports contributing to at least one of the three quantitative core-domain models."
     ),
     theme = theme(
       text = element_text(family = "Arial", colour = "#111111"),
@@ -1372,7 +1411,7 @@ world_map_figure <- map_panel +
 
 ggsave(
   file.path(output_dir, "14_World_map_study_distribution.svg"),
-  world_map_figure, device = svglite, width = 14, height = 8.2,
+  world_map_figure, device = grDevices::svg, width = 14, height = 8.2,
   units = "in", bg = "white"
 )
 

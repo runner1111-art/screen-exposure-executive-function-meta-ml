@@ -1,10 +1,10 @@
 # Screen exposure–executive function machine-learning analysis
 
-This directory contains the reproducible code, analysis datasets, numerical outputs and publication-ready figures for the machine-learning component of the meta-analysis.
+This directory contains the reproducible code and publication-ready figures for the machine-learning component of the meta-analysis. Locked inputs are stored in `../data/`; run-specific numerical outputs are regenerated locally and are not committed.
 
 ## Primary estimand
 
-The outcome is the harmonized effect size on the Fisher-z scale. Negative values indicate poorer executive function with greater screen exposure. The primary ML dataset is restricted to effect sizes that are valid for the conventional meta-analysis. The larger proxy-augmented dataset is analysed only as a sensitivity analysis because regression coefficients and other proxy statistics are not necessarily commensurate with correlations.
+The outcome is the harmonized effect size on the Fisher-z scale. Negative values indicate poorer executive function with greater screen exposure. The primary ML dataset is restricted to the expanded convertible-effect set used by the conventional synthesis. Every included effect has a signed correlation and valid Fisher-z sampling variance, with its conversion class retained in the workbook. The frozen proxy-augmented dataset is analysed only as a separately labelled sensitivity analysis because its proxy statistics are not necessarily commensurate with correlations.
 
 ## Leakage control
 
@@ -18,14 +18,14 @@ The final predictor set excludes `Quality_Class`. The source field was an effect
 
 ## Run
 
-The committed prepared primary and proxy-sensitivity CSV files are used by default, so the workflow is portable and does not depend on the original local directory structure.
+The primary dataset is regenerated from `../data/Meta-analysis_data_full_age_updated.xlsx` at each full model run and is restricted to `Expanded_Primary_Model = 1`. The proxy-sensitivity CSV in `../data/` is retained as a frozen, separately labelled comparator because its non-correlation statistics cannot be made commensurate with the primary target without additional assumptions.
 
 ```powershell
 python -m pip install -r requirements.txt
 python 01_run_machine_learning.py
 ```
 
-After a completed model run, figures and the narrative report can be regenerated without refitting:
+After a completed model run, the primary figures can be regenerated without refitting:
 
 ```powershell
 python 02_render_existing_results.py
@@ -39,6 +39,8 @@ python 03_additional_machine_learning_figures.py
 ```
 
 Input and output paths can be overridden with `SCREEN_EF_PRIMARY_PREPARED_CSV`, `SCREEN_EF_PROXY_PREPARED_CSV`, `SCREEN_EF_META_XLSX`, `SCREEN_EF_PROXY_XLSX`, `SCREEN_EF_AGE_XLSX` and `SCREEN_EF_ML_OUTPUT`. The random seed and resampling settings are recorded in `ML_run_config_and_session.json`.
+
+The current primary ML analysis contains 376 effects from 69 reports and 69 independent cohort/sample clusters. Repeated nested grouped cross-validation selected ridge regression as the lowest-RMSE non-null algorithm (RMSE 0.179 versus 0.185 for the training-mean comparator; predictive Q² = 0.052). The final full-data refit used alpha = 100. Figure ML8 is a descriptive ridge-contribution audit; held-out group-block permutation remains the primary explanation analysis.
 
 ## Figure set
 

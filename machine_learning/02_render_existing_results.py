@@ -45,7 +45,7 @@ def main() -> None:
     errors = ml.pd.read_csv(out / "ML_subgroup_prediction_error.csv")
     tuning = ml.pd.read_csv(out / "ML_final_model_tuning_audit.csv")
 
-    best_model = ml.select_final_model(summary, "Meta-grade primary")
+    best_model = ml.select_final_model(summary, "Expanded convertible-effect primary")
     chosen = tuning.loc[tuning["Inner_fold"] == 0].sort_values("RMSE").iloc[0]
     best_params = json.loads(chosen["Parameters"])
     pdp_age = pdp.loc[pdp["Feature"] == "Age_Mean_years"].copy()

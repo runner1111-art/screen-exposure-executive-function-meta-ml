@@ -242,7 +242,7 @@ def cohort_labels(primary: pd.DataFrame) -> pd.DataFrame:
         authors = list(pd.unique(part["First_Author"].dropna().astype(str)))
         years = pd.to_numeric(part["Year"], errors="coerce").dropna()
         reports = part["Report_ID"].nunique()
-        if str(group).startswith("Report-") and authors:
+        if reports == 1 and authors:
             year = str(int(years.iloc[0])) if len(years) else "NR"
             label = f"{authors[0]}, {year}"
         elif reports > 1:
@@ -751,8 +751,17 @@ def main() -> None:
     )
     plot_selection_stability(outer_fold_metrics, winners, ridge_alpha)
 
+    # Figure ML8 is deliberately a transparent linear audit even when a
+    # nonlinear algorithm wins the predictive comparison. Use the ridge
+    # penalty selected most often across inner resamples rather than trying to
+    # read nonexistent coefficients from a random-forest or boosting model.
+    ridge_alpha_choice = float(
+        ridge_alpha.sort_values(
+            ["Outer_folds_selected", "Alpha"], ascending=[False, True]
+        ).iloc[0]["Alpha"]
+    )
     contribution_summary, group_contributions = linear_contributions(
-        primary, best_model, best_params
+        primary, "Ridge", {"model__alpha": ridge_alpha_choice}
     )
     contribution_summary.to_csv(
         OUTPUT_DIR / "ML_linear_contribution_summary.csv",

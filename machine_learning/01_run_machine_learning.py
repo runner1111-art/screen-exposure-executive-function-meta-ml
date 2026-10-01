@@ -2,8 +2,9 @@
 """Leakage-resistant machine-learning meta-analysis for screen exposure and EF.
 
 The unit of validation is the independent cohort/sample cluster, not the effect-size
-row. The primary target is a comparable Fisher-z effect size. Non-meta-analytic
-proxy statistics are evaluated only in a separately labelled sensitivity analysis.
+row. The expanded primary target includes direct and documented converted
+correlation-scale effects. A strict/proxy-labelled sensitivity analysis is kept
+separate so that approximation-related uncertainty remains visible.
 """
 
 from __future__ import annotations
@@ -84,7 +85,7 @@ PRIMARY_PREPARED_CSV = os.environ.get(
 )
 PROXY_PREPARED_CSV = os.environ.get(
     "SCREEN_EF_PROXY_PREPARED_CSV",
-    str(SCRIPT_DIR / "ML_proxy_sensitivity_dataset.csv"),
+    str(DATA_DIR / "ML_proxy_sensitivity_dataset.csv"),
 )
 
 
@@ -225,11 +226,18 @@ def derive_measure_type(instrument: Any) -> str:
 
 
 def read_inputs() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    for path in (META_XLSX, ML_XLSX, AGE_XLSX):
+    for path in (META_XLSX, AGE_XLSX):
         if not path.exists():
             raise FileNotFoundError(f"Required input not found: {path}")
     meta = pd.read_excel(AGE_XLSX, sheet_name="Meta_Data")
-    proxy = pd.read_excel(ML_XLSX, sheet_name="ML_Data", skiprows=3)
+    if ML_XLSX.exists():
+        proxy = pd.read_excel(ML_XLSX, sheet_name="ML_Data", skiprows=3)
+    elif Path(PROXY_PREPARED_CSV).exists():
+        proxy = pd.read_csv(PROXY_PREPARED_CSV)
+    else:
+        raise FileNotFoundError(
+            f"Neither proxy workbook nor frozen proxy CSV was found: {ML_XLSX}"
+        )
     age = pd.read_excel(AGE_XLSX, sheet_name="Meta_Data")
     return meta, proxy, age
 
@@ -243,9 +251,18 @@ def prepare_primary(
         out = meta.copy()
     else:
         out = meta.merge(age[age_cols].drop_duplicates("Effect_ID"), on="Effect_ID", how="left")
-    out = out.merge(
-        proxy[quality_cols].drop_duplicates("Effect_ID"), on="Effect_ID", how="left"
+    if set(quality_cols).issubset(proxy.columns):
+        out = out.merge(
+            proxy[quality_cols].drop_duplicates("Effect_ID"), on="Effect_ID", how="left"
+        )
+    primary_col = (
+        "Expanded_Primary_Model"
+        if "Expanded_Primary_Model" in out.columns
+        else "Primary_Model"
     )
+    if primary_col in out.columns:
+        primary_flag = pd.to_numeric(out[primary_col], errors="coerce")
+        out = out.loc[primary_flag.eq(1)].copy()
     out["Target"] = pd.to_numeric(out["Fisher_z"], errors="coerce")
     out["Year"] = pd.to_numeric(out["Year"], errors="coerce")
     out["N"] = pd.to_numeric(out["N"], errors="coerce")
@@ -1063,8 +1080,8 @@ def plot_sensitivity(
 ) -> None:
     fig, axes = plt.subplots(2, 2, figsize=(7.8, 6.2))
     show_models = ["Null (training mean)", best_model]
-    datasets = ["Meta-grade primary", "Proxy-augmented sensitivity"]
-    colors = {"Meta-grade primary": BLUE, "Proxy-augmented sensitivity": ORANGE}
+    datasets = ["Expanded convertible-effect primary", "Proxy-augmented sensitivity"]
+    colors = {"Expanded convertible-effect primary": BLUE, "Proxy-augmented sensitivity": ORANGE}
 
     ax = axes[0, 0]
     positions = np.arange(len(show_models))
@@ -1206,10 +1223,10 @@ def write_report(
     importance: pd.DataFrame,
 ) -> None:
     primary_row = summary.loc[
-        (summary["Dataset"] == "Meta-grade primary") & (summary["Model"] == best_model)
+        (summary["Dataset"] == "Expanded convertible-effect primary") & (summary["Model"] == best_model)
     ].iloc[0]
     null_row = summary.loc[
-        (summary["Dataset"] == "Meta-grade primary")
+        (summary["Dataset"] == "Expanded convertible-effect primary")
         & (summary["Model"] == "Null (training mean)")
     ].iloc[0]
     improved = primary_row["RMSE_mean"] < null_row["RMSE_mean"]
@@ -1251,18 +1268,21 @@ The ML analysis estimates whether study, exposure and outcome characteristics ge
 
 def main() -> None:
     np.random.seed(SEED)
-    if PRIMARY_PREPARED_CSV and PROXY_PREPARED_CSV:
-        primary = pd.read_csv(PRIMARY_PREPARED_CSV)
-        proxy = pd.read_csv(PROXY_PREPARED_CSV)
-    else:
-        meta, proxy_raw, age = read_inputs()
-        primary = prepare_primary(meta, proxy_raw, age)
-        proxy = prepare_proxy(proxy_raw)
+    if not META_XLSX.exists():
+        raise FileNotFoundError(f"Required primary input not found: {META_XLSX}")
+    meta = pd.read_excel(META_XLSX, sheet_name="Meta_Data")
+    if not PROXY_PREPARED_CSV or not Path(PROXY_PREPARED_CSV).exists():
+        raise FileNotFoundError(
+            "The frozen proxy-sensitivity CSV is required to reproduce the "
+            "separately labelled proxy analysis."
+        )
+    proxy = pd.read_csv(PROXY_PREPARED_CSV)
+    primary = prepare_primary(meta, proxy, meta)
 
     manifest = pd.DataFrame(
         [
             {
-                "Dataset": "Meta-grade primary",
+                "Dataset": "Expanded convertible-effect primary",
                 "Rows": len(primary),
                 "Reports": primary["Report_ID"].nunique(),
                 "Independent_groups": primary["Group"].nunique(),
@@ -1288,13 +1308,13 @@ def main() -> None:
     primary_results = run_nested_cv(
         primary,
         PRIMARY_SPEC,
-        "Meta-grade primary",
+        "Expanded convertible-effect primary",
         model_names,
         OUTER_REPEATS,
         compute_permutation=True,
     )
     primary_summary = summarize_metrics(primary_results["metrics"])
-    best_model = select_final_model(primary_summary, "Meta-grade primary")
+    best_model = select_final_model(primary_summary, "Expanded convertible-effect primary")
 
     proxy_results = run_nested_cv(
         proxy,

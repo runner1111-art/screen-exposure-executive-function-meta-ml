@@ -7,3 +7,10 @@ __pycache__/
 Thumbs.db
 revision_*/
 reproduced_outputs/
+machine_learning/*.csv
+machine_learning/ML_run_config_and_session.json
+machine_learning/Machine_learning_analysis_report.md
+machine_learning/Machine_learning_additional_diagnostics.md
+traditional_meta/*.csv
+traditional_meta/R_session_info*.txt
+ANALYSIS_AUDIT.md

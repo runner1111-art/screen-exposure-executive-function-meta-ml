@@ -1,6 +1,0 @@
-﻿Figure,Purpose,Recommended_location
-Figure_ML4_learning_curve,Data sufficiency and generalization as independent training clusters increase,Main text
-Figure_ML5_cohort_error_audit,Identify cohorts or samples with concentrated prediction error and bias,Supplementary information
-Figure_ML6_error_support_heatmap,Joint EF-domain by screen-category error with evidence support,Main text
-Figure_ML7_model_selection_stability,Show algorithm and hyperparameter selection instability across grouped folds,Supplementary information
-Figure_ML8_linear_contribution_stability,Describe magnitude and direction of contributions in the final ridge refit,Supplementary information
